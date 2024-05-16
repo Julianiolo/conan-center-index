@@ -1,53 +1,53 @@
-from conans import ConanFile, tools, Meson, VisualStudioBuildEnvironment
-from conans.errors import ConanInvalidConfiguration
+from conan import ConanFile
+from conan.errors import ConanInvalidConfiguration
+from conan.tools.apple import fix_apple_shared_install_name
+from conan.tools.build import check_min_cppstd
+from conan.tools.env import VirtualBuildEnv
+from conan.tools.files import apply_conandata_patches, copy, export_conandata_patches, get, replace_in_file, rm, rmdir
+from conan.tools.gnu import PkgConfigDeps
+from conan.tools.layout import basic_layout
+from conan.tools.meson import Meson, MesonToolchain
+from conan.tools.microsoft import is_msvc
+from conan.tools.scm import Version
 import os
-import shutil
 import glob
 
-required_conan_version = ">=1.36.0"
+required_conan_version = ">=1.53.0"
 
 class GobjectIntrospectionConan(ConanFile):
     name = "gobject-introspection"
     description = "GObject introspection is a middleware layer between C libraries (using GObject) and language bindings"
-    topics = ("conan", "gobject-instrospection")
+    topics = ("gobject-instrospection")
     url = "https://github.com/conan-io/conan-center-index"
     homepage = "https://gitlab.gnome.org/GNOME/gobject-introspection"
     license = "LGPL-2.1"
+    package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
-    options = {"shared": [True, False], "fPIC": [True, False]}
-    default_options = {"shared": False, "fPIC": True}
-    _source_subfolder = "source_subfolder"
-    _build_subfolder = "build_subfolder"
-    generators = "pkg_config"
-
-    @property
-    def _is_msvc(self):
-        return self.settings.compiler == "Visual Studio"
-
-    def configure(self):
-        if self.options.shared:
-            del self.options.fPIC
-        del self.settings.compiler.libcxx
-        del self.settings.compiler.cppstd
+    options = {
+        "shared": [True, False], 
+        "fPIC": [True, False]
+    }
+    default_options = {
+        "shared": False, 
+        "fPIC": True
+    }
 
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if self.settings.os == "Windows":
-            raise ConanInvalidConfiguration("%s recipe does not support windows. Contributions are welcome!" % self.name)
 
-    def build_requirements(self):
-        if tools.Version(self.version) >= "1.71.0":
-            self.build_requires("meson/0.62.2")
-        else:
-            # https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/414
-            self.build_requires("meson/0.59.3")
-        self.build_requires("pkgconf/1.7.4")
-        if self.settings.os == "Windows":
-            self.build_requires("winflexbison/2.5.24")
-        else:
-            self.build_requires("flex/2.6.4")
-            self.build_requires("bison/3.7.6")
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        # for plain C projects only
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
+
+    def layout(self):
+        basic_layout(self, src_folder="src")
+
+    def requirements(self):
+        self.requires("dependency/0.8.1")
 
     def requirements(self):
         self.requires("glib/2.73.0")
